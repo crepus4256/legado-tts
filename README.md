@@ -30,15 +30,15 @@
 先将 `install.sh` 中的仓库地址替换为你的 GitHub 仓库，或者安装时传入：
 
 ```bash
-sudo REPO_URL=https://github.com/你的用户名/legado-tts.git bash -c "$(curl -fsSL https://raw.githubusercontent.com/你的用户名/legado-tts/main/install.sh)"
+sudo REPO_URL=https://github.com/crepus4256/legado-tts.git bash -c "$(curl -fsSL https://raw.githubusercontent.com/crepus4256/legado-tts/main/install.sh)"
 ```
 
 也可以常规安装：
 
 ```bash
-git clone https://github.com/你的用户名/legado-tts.git
+git clone https://github.com/crepus4256/legado-tts.git
 cd legado-tts
-sudo REPO_URL=https://github.com/你的用户名/legado-tts.git bash install.sh
+sudo REPO_URL=https://github.com/crepus4256/legado-tts.git bash install.sh
 ```
 
 安装成功后脚本会显示：

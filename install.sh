@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 INSTALL_DIR=${INSTALL_DIR:-/opt/legado-tts}
-REPO_URL=${REPO_URL:-https://github.com/REPLACE_ME/legado-tts.git}
+REPO_URL=${REPO_URL:-https://github.com/crepus4256/legado-tts.git}
 PORT=${PORT:-8765}
 if [ "$(id -u)" -ne 0 ]; then echo "请使用 root 或 sudo 运行"; exit 1; fi
 if ! command -v docker >/dev/null 2>&1; then
