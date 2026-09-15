@@ -1,0 +1,1864 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>阅读 TTS 服务控制台</title>
+  <style>
+    /* ==========================================================================
+       设计系统核心变量与主题定义
+       ========================================================================== */
+    :root {
+      --font-sans: 'Microsoft YaHei', '微软雅黑', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono: 'Microsoft YaHei', '微软雅黑', Consolas, monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 深色主题 (Dark Theme - 默认) */
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg-body: #0a0e17;
+      --bg-mesh: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.14) 0px, transparent 45%),
+                 radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.12) 0px, transparent 45%),
+                 radial-gradient(at 50% 100%, rgba(79, 70, 229, 0.08) 0px, transparent 50%);
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-card-header: rgba(23, 32, 54, 0.7);
+      --bg-surface: #111827;
+      --bg-surface-alt: #162032;
+      --bg-input: #0d1321;
+      --border-subtle: rgba(255, 255, 255, 0.09);
+      --border-hover: rgba(255, 255, 255, 0.2);
+      --border-focus: #6366f1;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --text-dim: #475569;
+      --card-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+      --primary-color: #6366f1;
+      --primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      --primary-glow: 0 6px 20px -3px rgba(99, 102, 241, 0.4);
+      --danger-color: #ef4444;
+      --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      --danger-glow: 0 6px 20px -3px rgba(239, 68, 68, 0.35);
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --code-bg: #090d16;
+      --code-border: rgba(99, 102, 241, 0.22);
+      --table-header-bg: rgba(15, 23, 42, 0.88);
+      --table-row-hover: rgba(255, 255, 255, 0.035);
+
+      /* 滑块高对比度变量 */
+      --slider-track: #1e293b;
+      --slider-track-border: rgba(255, 255, 255, 0.2);
+
+      /* 下拉选择框图标 */
+      --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+      /* 滚动条颜色 */
+      --scrollbar-track: rgba(10, 14, 23, 0.8);
+      --scrollbar-thumb: #334155;
+      --scrollbar-thumb-hover: #6366f1;
+    }
+
+    /* 浅色主题 (Light Theme) */
+    html[data-theme="light"] {
+      color-scheme: light;
+      --bg-body: #f4f6fa;
+      --bg-mesh: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 40%),
+                 radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.07) 0px, transparent 40%);
+      --bg-card: rgba(255, 255, 255, 0.95);
+      --bg-card-header: rgba(248, 250, 252, 0.92);
+      --bg-surface: #ffffff;
+      --bg-surface-alt: #f8fafc;
+      --bg-input: #ffffff;
+      --border-subtle: #e2e8f0;
+      --border-hover: #cbd5e1;
+      --border-focus: #4f46e5;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --card-shadow: 0 10px 30px -6px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+      --primary-color: #4f46e5;
+      --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+      --primary-glow: 0 6px 20px -3px rgba(79, 70, 229, 0.25);
+      --danger-color: #dc2626;
+      --danger-gradient: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      --danger-glow: 0 6px 20px -3px rgba(220, 38, 38, 0.2);
+      --success-color: #16a34a;
+      --warning-color: #d97706;
+      --code-bg: #f8fafc;
+      --code-border: #e2e8f0;
+      --table-header-bg: #f1f5f9;
+      --table-row-hover: rgba(0, 0, 0, 0.02);
+
+      /* 滑块高对比度变量 */
+      --slider-track: #cbd5e1;
+      --slider-track-border: #94a3b8;
+
+      /* 下拉选择框图标 */
+      --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+      /* 滚动条颜色 */
+      --scrollbar-track: #f1f5f9;
+      --scrollbar-thumb: #cbd5e1;
+      --scrollbar-thumb-hover: #4f46e5;
+    }
+
+    /* ==========================================================================
+       全站滚动条美化规范 (Scrollbars)
+       ========================================================================== */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+      border-radius: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 8px;
+      border: 1px solid var(--scrollbar-track);
+      transition: var(--transition);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover);
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+
+    /* ==========================================================================
+       基础排版与重置
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      background-color: var(--bg-body);
+      background-image: var(--bg-mesh);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px 28px 48px;
+    }
+
+    /* ==========================================================================
+       顶部导航栏（Header）
+       ========================================================================== */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 22px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: var(--primary-gradient);
+      box-shadow: var(--primary-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .brand-icon svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .brand-title-wrap h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(120deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    .brand-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 3px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    .badge-edge {
+      background: rgba(99, 102, 241, 0.14);
+      color: var(--primary-color);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+
+    .badge-status {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--success-color);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+      animation: pulseAnimation 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseAnimation {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* 鉴权会话徽章（登录后显示） */
+    #sessionBadge {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    body.is-authenticated #sessionBadge {
+      display: inline-flex;
+    }
+
+    .relogin-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .relogin-link:hover {
+      text-decoration: underline;
+    }
+
+    /* 醒目可靠的主题切换胶囊按钮 */
+    .theme-pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 38px;
+      padding: 0 14px;
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      user-select: none;
+    }
+
+    .theme-pill-btn:hover {
+      border-color: var(--primary-color);
+      background: var(--bg-card);
+      transform: translateY(-1px);
+    }
+
+    .theme-icon-sun {
+      display: none;
+      color: #f59e0b;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .theme-icon-moon {
+      display: inline-block;
+      color: #818cf8;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    html[data-theme="light"] .theme-icon-sun {
+      display: inline-block;
+    }
+
+    html[data-theme="light"] .theme-icon-moon {
+      display: none;
+    }
+
+    /* ==========================================================================
+       卡片（Card）通用架构
+       ========================================================================== */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-card-header);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-icon-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      background: rgba(99, 102, 241, 0.12);
+      color: var(--primary-color);
+    }
+
+    .card h2, .card h3 {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    /* ==========================================================================
+       表单控件与下拉菜单定制 (Select & Inputs)
+       ========================================================================== */
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      margin-top: 14px;
+    }
+
+    label:first-child {
+      margin-top: 0;
+    }
+
+    /* 通用输入框 */
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]) {
+      width: 100%;
+      height: 42px;
+      padding: 0 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    input::placeholder {
+      color: var(--text-dim);
+    }
+
+    /* 定制化高级下拉菜单 (Select) */
+    select {
+      color-scheme: inherit;
+      width: 100%;
+      height: 42px;
+      padding: 0 38px 0 14px;
+      background-color: var(--bg-input);
+      background-image: var(--select-arrow);
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 16px 16px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: var(--transition);
+    }
+
+    select:hover {
+      border-color: var(--primary-color);
+      background-color: var(--bg-surface-alt);
+    }
+
+    select:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22);
+    }
+
+    select option {
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
+      padding: 10px 14px;
+      font-size: 13.5px;
+    }
+
+    select option:checked {
+      background: var(--primary-color) !important;
+      color: #ffffff !important;
+    }
+
+    /* 密码输入框与显隐眼睛按钮包裹器 */
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .input-wrap input {
+      padding-right: 44px !important;
+    }
+
+    .eye-toggle-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      color: var(--text-muted) !important;
+      width: 32px !important;
+      height: 32px !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      border-radius: var(--radius-sm) !important;
+    }
+
+    .eye-toggle-btn:hover {
+      color: var(--text-primary) !important;
+    }
+
+    /* 按钮规范 */
+    button {
+      font-family: var(--font-sans);
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .btn,
+    button:not(.theme-pill-btn):not(.eye-toggle-btn):not(.chip-item):not(.btn-copy-code):not(.prio-btn) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 18px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #ffffff;
+      background: var(--primary-gradient);
+      box-shadow: var(--primary-glow);
+    }
+
+    button:not(.theme-pill-btn):not(.eye-toggle-btn):not(.prio-btn):hover {
+      opacity: 0.94;
+      transform: translateY(-1px);
+    }
+
+    button:not(.theme-pill-btn):not(.eye-toggle-btn):active {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    button.secondary {
+      background: var(--bg-surface-alt) !important;
+      color: var(--text-primary) !important;
+      border: 1px solid var(--border-subtle) !important;
+      box-shadow: none !important;
+    }
+
+    button.secondary:hover {
+      background: var(--border-subtle) !important;
+      border-color: var(--border-hover) !important;
+    }
+
+    button.danger {
+      background: var(--danger-gradient) !important;
+      box-shadow: var(--danger-glow) !important;
+      color: #ffffff !important;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .row > * {
+      flex: 1;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* ==========================================================================
+       滑块控件强化（高对比度、高可视性 Range Slider）
+       ========================================================================== */
+    .slider-header-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
+    .slider-header-wrap label {
+      margin: 0;
+    }
+
+    .val-badge {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      background: var(--slider-track);
+      border: 1px solid var(--slider-track-border);
+      border-radius: 999px;
+      outline: none;
+      margin-top: 6px;
+      margin-bottom: 2px;
+      padding: 0 !important;
+      cursor: pointer;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.28);
+      transition: var(--transition);
+    }
+
+    input[type="range"]:hover {
+      border-color: var(--primary-color);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 4px solid var(--primary-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(99, 102, 241, 0.2);
+      cursor: grab;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.18);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(99, 102, 241, 0.35);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 4px solid var(--primary-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      cursor: grab;
+    }
+
+    input[type="range"]:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .scale {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-dim);
+      font-size: 11px;
+      margin-top: 5px;
+    }
+
+    /* 跟随速度开关卡片 */
+    .speed-toggle-card {
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      margin-top: 14px;
+    }
+
+    .speed-mode {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .speed-mode input[type="checkbox"] {
+      width: 17px !important;
+      height: 17px !important;
+      accent-color: var(--primary-color);
+      cursor: pointer;
+      margin: 0 !important;
+    }
+
+    /* 音色标识徽章 */
+    .voice-id-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-surface-alt);
+      border: 1px dashed var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--primary-color);
+      word-break: break-all;
+    }
+
+    /* 试听预设文本芯片 */
+    .preset-chips-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+
+    .chip-item {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border-subtle);
+      padding: 3px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+      user-select: none;
+    }
+
+    .chip-item:hover {
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+      background: var(--bg-card);
+    }
+
+    audio {
+      border-radius: var(--radius-md);
+      outline: none;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.1));
+    }
+
+    /* ==========================================================================
+       登录卡片布局
+       ========================================================================== */
+    .login-container {
+      max-width: 460px;
+      margin: 50px auto 30px;
+      transition: var(--transition);
+    }
+
+    .login-card .card-header {
+      padding: 24px 24px 18px;
+      text-align: center;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .login-hero-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--radius-lg);
+      background: var(--primary-gradient);
+      box-shadow: var(--primary-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    .login-card h2 {
+      font-size: 19px;
+    }
+
+    .login-card .card-body {
+      padding: 22px;
+    }
+
+    .login-card button {
+      width: 100%;
+      margin-top: 14px;
+    }
+
+    body.is-authenticated .login-container {
+      display: none;
+    }
+
+    body.is-authenticated .login-container.show-forced {
+      display: block;
+      margin: 0 0 20px 0;
+      max-width: 100%;
+    }
+
+    /* ==========================================================================
+       双栏完美对齐布局（Panel Layout）
+       ========================================================================== */
+    #panel:not([hidden]) {
+      display: block;
+    }
+
+    .dashboard-columns {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .col-primary, .col-secondary {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    /* 微软官方区域列表 */
+    .regions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 9px;
+      margin-top: 0px;
+    }
+
+    .regions label {
+      margin: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 12px;
+      padding: 11px 14px;
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .regions label:hover {
+      border-color: var(--primary-color);
+      background: var(--bg-card);
+    }
+
+    .region-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .region-left input[type="checkbox"].reg {
+      width: 17px !important;
+      height: 17px !important;
+      accent-color: var(--primary-color);
+      cursor: pointer;
+      margin: 0 !important;
+      flex-shrink: 0;
+    }
+
+    .region-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .region-code {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .region-right {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
+    .region-prio-text {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      user-select: none;
+    }
+
+    /* 隐藏原生数字输入框的上下箭头 (spin buttons) */
+    .prio::-webkit-inner-spin-button,
+    .prio::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .prio {
+      -moz-appearance: textfield;
+    }
+
+    /* 优先级加减步进器容器 */
+    .prio-stepper {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-input);
+      overflow: hidden;
+      height: 30px;
+      box-sizing: border-box;
+      flex-shrink: 0;
+      transition: border-color 0.2s ease;
+    }
+
+    .prio-stepper:hover {
+      border-color: var(--primary-color);
+    }
+
+    .prio-btn {
+      width: 26px !important;
+      height: 28px !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      color: var(--text-secondary) !important;
+      cursor: pointer !important;
+      user-select: none !important;
+      transform: none !important;
+      transition: background-color 0.15s ease, color 0.15s ease !important;
+      flex-shrink: 0;
+    }
+
+    .prio-btn svg {
+      display: block;
+      pointer-events: none;
+    }
+
+    .prio-btn:hover {
+      background: var(--bg-surface-alt) !important;
+      color: var(--primary-color) !important;
+      transform: none !important;
+      opacity: 1 !important;
+    }
+
+    .prio-btn:active {
+      background: var(--border-hover) !important;
+      transform: none !important;
+    }
+
+    .regions input.prio {
+      height: 28px !important;
+      line-height: 28px !important;
+      width: 28px !important;
+      text-align: center !important;
+      font-weight: 700 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+      color: var(--primary-color) !important;
+      font-family: var(--font-mono) !important;
+      font-size: 13.5px !important;
+      outline: none !important;
+      box-shadow: none !important;
+      vertical-align: middle !important;
+    }
+
+    /* 代码展示与配置框（Box） */
+    .box {
+      position: relative;
+      padding: 12px 14px;
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.6;
+      word-break: break-all;
+      max-height: 115px;
+      overflow-y: auto;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      user-select: all;
+    }
+
+    .config-meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .meta-tag {
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+    }
+
+    .meta-tag b {
+      color: var(--primary-color);
+      font-family: var(--font-mono);
+    }
+
+    /* 文本状态与提示类 */
+    .hint {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .ok {
+      color: var(--success-color) !important;
+      font-weight: 600;
+    }
+
+    .bad {
+      color: var(--danger-color) !important;
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       运行状态监控与状态表格（Status Table & Grid）
+       ========================================================================== */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface-alt);
+      transition: var(--transition);
+    }
+
+    .stat:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+
+    .stat small {
+      display: block;
+      color: var(--text-muted);
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .stat b {
+      display: block;
+      font-size: 20px;
+      font-weight: 800;
+      margin-top: 5px;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .status-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      min-width: 620px;
+    }
+
+    .status-table th {
+      text-align: left;
+      padding: 11px 13px;
+      color: var(--text-secondary);
+      background: var(--table-header-bg);
+      font-weight: 600;
+      font-size: 11.5px;
+      border-bottom: 1px solid var(--border-subtle);
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .status-table td {
+      padding: 10px 13px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+
+    .status-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-table tr:hover td {
+      background: var(--table-row-hover);
+    }
+
+    .status-table small {
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 7px;
+    }
+
+    .dot.ok {
+      background: var(--success-color);
+      box-shadow: 0 0 8px var(--success-color);
+    }
+
+    .dot.bad {
+      background: var(--danger-color);
+      box-shadow: 0 0 8px var(--danger-color);
+    }
+
+    .dot.idle {
+      background: var(--text-dim);
+    }
+
+    /* 浮动 Toast 弹窗 */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-focus);
+      color: var(--text-primary);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* 页脚 */
+    .app-footer {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    /* ==========================================================================
+       响应式适配
+       ========================================================================== */
+    @media (max-width: 1080px) {
+      .dashboard-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app-container {
+        padding: 16px;
+      }
+      .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .header-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- 顶部导航条 -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M17 5v14M7 8v8M22 10v4M2 10v4"/>
+        </svg>
+      </div>
+      <div class="brand-title-wrap">
+        <h1>阅读 TTS 控制台</h1>
+        <div class="brand-badges">
+          <span class="badge-pill badge-edge">Edge TTS Relay</span>
+          <span class="badge-pill badge-status">
+            <span class="pulse-dot"></span>服务就绪
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="header-controls">
+      <!-- 鉴权会话状态（登录成功后出现） -->
+      <div id="sessionBadge">
+        <span>🔑 管理员已连接</span>
+        <span class="relogin-link" onclick="reauth()">重新验证</span>
+      </div>
+
+      <!-- 深浅模式切换按钮 -->
+      <button type="button" class="theme-pill-btn" onclick="toggleTheme()" title="切换深色/浅色模式">
+        <span class="theme-icon-sun">☀️</span>
+        <span class="theme-icon-moon">🌙</span>
+        <span id="themeBtnText">深色模式</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 登录认证区域（居中卡片） -->
+  <div id="loginSection" class="login-container">
+    <div class="card login-card">
+      <div class="card-header">
+        <div class="login-hero-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h2>管理员安全认证</h2>
+        <p class="card-subtitle">输入访问密钥（X-TTS-Key）以载入服务设置与运行监控</p>
+      </div>
+      <div class="card-body">
+        <label>访问密钥</label>
+        <div class="input-wrap">
+          <input id="key" type="password" placeholder="输入当前访问密钥" onkeydown="if(event.key==='Enter')login()">
+          <button type="button" class="eye-toggle-btn" onclick="togglePass('key', this)" title="切换明文显示">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        
+        <button onclick="login()">登录并加载配置</button>
+        <p id="loginMsg" class="hint">密钥仅保存在客户端本地内存，不会记录在服务器访问日志中。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理面板区（登录成功后展示） -->
+  <div id="panel" hidden>
+    
+    <!-- 完美对齐双栏体系 -->
+    <div class="dashboard-columns">
+      
+      <!-- 左栏：1. 声音设置 + 6. 运行状态与多区域健康监控 -->
+      <div class="col-primary">
+        
+        <!-- 1. 声音设置 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon-badge">🎙️</div>
+              <div>
+                <h2>声音设置</h2>
+                <p class="card-subtitle">定制音色、语言、朗读风格及合成参数</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="grid">
+              <div>
+                <label>语言</label>
+                <select id="locale" onchange="renderVoices()"></select>
+              </div>
+              <div>
+                <label>默认音色</label>
+                <select id="voice" onchange="voiceChanged()"></select>
+              </div>
+            </div>
+
+            <div id="voiceInfo" class="voice-id-badge"></div>
+
+            <label>朗读风格</label>
+            <select id="style"></select>
+
+            <div class="speed-toggle-card">
+              <label class="speed-mode">
+                <input id="followSpeed" type="checkbox" onchange="speedModeChanged()"> 
+                跟随「阅读 App」设定的朗读速度
+              </label>
+              <p id="speedHint" class="hint"></p>
+            </div>
+
+            <div class="grid">
+              <div>
+                <div class="slider-header-wrap">
+                  <label>默认语速</label>
+                  <b id="rateV" class="val-badge">0%</b>
+                </div>
+                <input id="rate" type="range" min="-50" max="200" step="5" value="0" oninput="rateV.textContent=this.value+'%'">
+                <div class="scale"><span>慢 -50%</span><span>正常 0%</span><span>最快 +200%</span></div>
+              </div>
+
+              <div>
+                <div class="slider-header-wrap">
+                  <label>音调</label>
+                  <b id="pitchV" class="val-badge">0Hz</b>
+                </div>
+                <input id="pitch" type="range" min="-20" max="20" value="0" oninput="pitchV.textContent=this.value+'Hz'">
+                <div class="scale"><span>低沉 -20Hz</span><span>自然 0Hz</span><span>高昂 +20Hz</span></div>
+              </div>
+
+              <div style="grid-column: span 2;">
+                <div class="slider-header-wrap">
+                  <label>音量</label>
+                  <b id="volumeV" class="val-badge">0%</b>
+                </div>
+                <input id="volume" type="range" min="-50" max="50" value="0" oninput="volumeV.textContent=this.value+'%'">
+                <div class="scale"><span>减弱 -50%</span><span>正常 0%</span><span>增强 +50%</span></div>
+              </div>
+            </div>
+
+            <label>试听文字</label>
+            <div class="preset-chips-wrap">
+              <span class="chip-item" onclick="setSample('问候')">日常问候</span>
+              <span class="chip-item" onclick="setSample('小说')">小说旁白</span>
+              <span class="chip-item" onclick="setSample('对话')">情绪对白</span>
+              <span class="chip-item" onclick="setSample('英文')">English</span>
+            </div>
+            <input id="sample" type="text" value="你好，这是晓晓多语言的试听效果。Hello, welcome to the multilingual voice test.">
+
+            <button onclick="preview()" style="margin-top:14px; width:100%;">▶ 试听当前设置</button>
+            <audio id="player" controls style="width:100%;margin-top:12px"></audio>
+          </div>
+        </div>
+
+        <!-- 6. 运行状态与多区域健康监控（移至声音设置下方） -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon-badge">📊</div>
+              <div>
+                <h2>运行状态与多区域健康监控</h2>
+                <p class="card-subtitle">系统每 10 秒自动轮询检测各节点连通性与平均响应延迟</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="status"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 右栏：4. 阅读 App 配置 + 3. 缓存维护 + 2. 微软区域 + 5. 更换密码 -->
+      <div class="col-secondary">
+        
+        <!-- 4. 阅读 App 配置 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon-badge">📱</div>
+              <div>
+                <h2>阅读 App 接入配置</h2>
+                <p class="card-subtitle">复制导入规则填入「阅读」手机客户端的自定义网络朗读引擎</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <label>URL 规则：</label>
+            <div id="rule" class="box"></div>
+            
+            <label>请求头 (Headers)：</label>
+            <div id="headers" class="box"></div>
+            
+            <div class="config-meta-bar">
+              <span class="meta-tag">Content-Type: <b>audio/mp3</b></span>
+              <span class="meta-tag">并发率: <b>2</b></span>
+            </div>
+            <button onclick="copyConfig()" style="width:100%;">复制 URL 规则</button>
+          </div>
+        </div>
+
+        <!-- 3. 缓存与存储维护 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon-badge">💾</div>
+              <div>
+                <h2>缓存与存储维护</h2>
+                <p class="card-subtitle">控制音频生成结果的本地缓存生命周期与容量配额</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="grid">
+              <div>
+                <label>保存时间</label>
+                <select id="days">
+                  <option value="7">7 天</option>
+                  <option value="14">14 天（推荐）</option>
+                  <option value="30">30 天</option>
+                </select>
+              </div>
+              <div>
+                <label>容量上限</label>
+                <select id="mb">
+                  <option value="512">512 MB</option>
+                  <option value="1024">1 GB（推荐）</option>
+                  <option value="2048">2 GB</option>
+                </select>
+              </div>
+            </div>
+            <p id="cacheInfo" class="hint"></p>
+            <div class="row">
+              <button onclick="save()">保存全部设置</button>
+              <button class="secondary" onclick="refreshVoices()">更新音色目录</button>
+              <button class="danger" onclick="clearCache()">清空缓存</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 微软官方区域（调整至缓存维护与更换密码中间） -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon-badge">🌐</div>
+              <div>
+                <h2>微软官方区域</h2>
+                <p class="card-subtitle">勾选启用；数字越小优先级越高。系统仍会根据延迟和成功率自动优化</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="regionList" class="regions"></div>
+          </div>
+        </div>
+
+        <!-- 5. 更换访问密钥 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="card-icon-badge">🔑</div>
+              <div>
+                <h2>更换访问密钥</h2>
+                <p class="card-subtitle">至少 12 个字符。更换后，阅读 App 的请求头也要换成新密钥</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <label>新访问密钥</label>
+            <div class="input-wrap">
+              <input id="newKey" type="password" placeholder="输入至少12位新密钥" onkeydown="if(event.key==='Enter')changeKey()">
+              <button type="button" class="eye-toggle-btn" onclick="togglePass('newKey', this)" title="切换明文显示">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <button onclick="changeKey()" style="margin-top:14px; width:100%;">更换密钥</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div> <!-- /#panel -->
+
+  <!-- 页脚 -->
+  <footer class="app-footer">
+    <p>阅读 TTS 服务端管理控制台 · 高性能 Edge 语音合成代理</p>
+  </footer>
+
+  <!-- 浮动轻量 Toast 提示 -->
+  <div id="toast" class="toast"></div>
+</div>
+
+<script>
+/* ==========================================================================
+   业务交互逻辑（严格保留全部原有变量、函数及通信契约）
+   ========================================================================== */
+let voices = [],
+    cfg = {},
+    regNames = {
+      eastus: '美国东部',
+      westus: '美国西部',
+      eastasia: '东亚',
+      southeastasia: '东南亚',
+      westeurope: '西欧',
+      northeurope: '北欧'
+    };
+
+const H = () => ({
+  'X-TTS-Key': key.value,
+  'Content-Type': 'application/json'
+});
+
+function signed(n) {
+  n = +n;
+  return (n >= 0 ? '+' : '') + n;
+}
+
+async function api(url, opt = {}) {
+  opt.headers = { ...H(), ...(opt.headers || {}) };
+  let r = await fetch(url, opt);
+  if (!r.ok) throw Error((await r.text()) || r.status);
+  return r;
+}
+
+async function login() {
+  try {
+    let [s, v] = await Promise.all([api('/status'), api('/voices')]);
+    cfg = await s.json();
+    cfg = cfg.config;
+    voices = (await v.json()).voices;
+    panel.hidden = false;
+    document.body.classList.add('is-authenticated');
+    loginMsg.textContent = '✓ 登录成功并已载入配置';
+    loginMsg.className = 'ok';
+    renderAll();
+    await showStatus();
+    showToast('登录成功，已载入服务配置');
+  } catch (e) {
+    loginMsg.textContent = '登录失败：密钥不正确或服务端未响应';
+    loginMsg.className = 'bad';
+    showToast('登录失败：密钥不正确', 'bad');
+  }
+}
+
+function renderAll() {
+  let ls = [...new Set(voices.map(v => v.locale))].sort();
+  locale.innerHTML = ls.map(x => `<option ${x === 'zh-CN' ? 'selected' : ''}>${x}</option>`).join('');
+  renderVoices(cfg.default_voice);
+  followSpeed.checked = cfg.follow_legado_speed !== false;
+  rate.value = parseFloat(cfg.default_rate) || 0;
+  pitch.value = parseFloat(cfg.default_pitch) || 0;
+  volume.value = parseFloat(cfg.default_volume) || 0;
+  rate.oninput();
+  pitch.oninput();
+  volume.oninput();
+  speedModeChanged();
+  days.value = cfg.cache_ttl_days;
+  mb.value = cfg.cache_max_mb;
+  regionList.innerHTML = Object.entries(regNames).map(([id, n], i) =>
+    `<label class="region-item">` +
+      `<div class="region-left">` +
+        `<input type="checkbox" class="reg" value="${id}" ${cfg.regions.includes(id) ? 'checked' : ''}>` +
+        `<span class="region-name">${n} <span class="region-code">(${id})</span></span>` +
+      `</div>` +
+      `<div class="region-right">` +
+        `<span class="region-prio-text">优先级</span>` +
+        `<div class="prio-stepper" onclick="event.preventDefault(); event.stopPropagation();">` +
+          `<button type="button" class="prio-btn prio-btn-dec" onclick="stepPrio('${id}', -1); event.stopPropagation();" title="降低优先级">` +
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>` +
+          `</button>` +
+          `<input class="prio" data-r="${id}" type="number" min="1" max="6" value="${Math.max(1, cfg.regions.indexOf(id) + 1)}" onclick="event.stopPropagation()">` +
+          `<button type="button" class="prio-btn prio-btn-inc" onclick="stepPrio('${id}', 1); event.stopPropagation();" title="提高优先级">` +
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>` +
+          `</button>` +
+        `</div>` +
+      `</div>` +
+    `</label>`
+  ).join('');
+  updateConfigText();
+}
+
+function renderVoices(selected) {
+  let list = voices.filter(v => v.locale === locale.value);
+  voice.innerHTML = list.map(v =>
+    `<option value="${v.id}" ${v.id === (selected || cfg.default_voice) ? 'selected' : ''}>${v.name} · ${v.gender === 'Female' ? '女声' : '男声'}${v.status && v.status !== 'GA' ? ' · ' + v.status : ''}</option>`
+  ).join('');
+  voiceChanged();
+}
+
+function voiceChanged() {
+  let v = voices.find(x => x.id === voice.value) || {};
+  voiceInfo.textContent = v.id || '';
+  let ss = v.styles || [];
+  style.innerHTML = '<option value="">自动/无风格</option>' + ss.map(x =>
+    `<option value="${x}" ${x === cfg.default_style ? 'selected' : ''}>${styleName(x)}（${x}）</option>`
+  ).join('');
+  updateConfigText();
+}
+
+function styleName(x) {
+  return ({
+    story: '讲故事',
+    cheerful: '愉快',
+    affectionate: '温柔亲切',
+    empathetic: '共情',
+    excited: '兴奋',
+    'poetry-reading': '诗歌朗读',
+    sorry: '抱歉'
+  })[x] || x;
+}
+
+function speedModeChanged() {
+  let on = followSpeed.checked;
+  rate.disabled = on;
+  speedHint.textContent = on
+    ? '已开启：每次使用阅读 App 当前速度，下面的网页默认语速暂不生效。'
+    : '已关闭：忽略阅读 App 传来的速度，统一使用下面的网页默认语速。';
+  speedHint.className = on ? 'hint' : 'ok';
+}
+
+function stepPrio(id, delta) {
+  let el = document.querySelector(`[data-r="${id}"]`);
+  if (!el) return;
+  let val = parseInt(el.value) || 1;
+  val = Math.max(1, Math.min(6, val + delta));
+  el.value = val;
+}
+
+function regionsValue() {
+  return [...document.querySelectorAll('.reg:checked')].map(x => x.value).sort(
+    (a, b) => document.querySelector(`[data-r="${a}"]`).value - document.querySelector(`[data-r="${b}"]`).value
+  );
+}
+
+async function save() {
+  try {
+    let b = {
+      default_voice: voice.value,
+      default_style: style.value,
+      follow_legado_speed: followSpeed.checked,
+      default_rate: signed(rate.value) + '%',
+      default_pitch: signed(pitch.value) + 'Hz',
+      default_volume: signed(volume.value) + '%',
+      regions: regionsValue(),
+      cache_ttl_days: +days.value,
+      cache_max_mb: +mb.value
+    };
+    cfg = await (await api('/admin/config', { method: 'POST', body: JSON.stringify(b) })).json();
+    alert('设置已保存');
+    showToast('设置已成功同步至服务器');
+    updateConfigText();
+    showStatus();
+  } catch (e) {
+    alert('保存失败：' + e.message);
+  }
+}
+
+async function preview() {
+  try {
+    const requestedRate = signed(rate.value) + '%';
+    let u = '/tts?preview=1&_=' + Date.now() +
+            '&text=' + encodeURIComponent(sample.value) +
+            '&voice=' + encodeURIComponent(voice.value) +
+            '&style=' + encodeURIComponent(style.value) +
+            '&rate=' + encodeURIComponent(requestedRate) +
+            '&pitch=' + encodeURIComponent(signed(pitch.value) + 'Hz') +
+            '&volume=' + encodeURIComponent(signed(volume.value) + '%');
+    let response = await api(u, { cache: 'no-store' });
+    const actualRate = response.headers.get('X-TTS-Rate') || requestedRate;
+    let b = await response.blob();
+    if (player.dataset.objectUrl) URL.revokeObjectURL(player.dataset.objectUrl);
+    const objectUrl = URL.createObjectURL(b);
+    player.dataset.objectUrl = objectUrl;
+    player.src = objectUrl;
+    await player.play();
+    showToast('正在试听，实际语速：' + actualRate);
+  } catch (e) {
+    alert('试听失败：' + e.message);
+  }
+}
+async function refreshVoices() {
+  try {
+    await api('/admin/voices/refresh', { method: 'POST' });
+    alert('音色目录已更新，请重新登录加载');
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function clearCache() {
+  if (confirm('确定清空全部音频缓存？')) {
+    await api('/admin/cache/clear', { method: 'POST' });
+    showToast('音频缓存已清空');
+    showStatus();
+  }
+}
+
+async function changeKey() {
+  if (newKey.value.length < 12) return alert('新密钥至少12个字符');
+  try {
+    await api('/admin/key', { method: 'POST', body: JSON.stringify({ new_key: newKey.value }) });
+    key.value = newKey.value;
+    newKey.value = '';
+    alert('密钥已更换，请同步修改阅读 App 请求头');
+    showToast('访问密钥已更换');
+    updateConfigText();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function updateConfigText() {
+  let base = location.origin + '/tts,{"method":"POST","body":"tex={{java.encodeURI(java.encodeURI(speakText))}}&speed={{speakSpeed}}"}';
+  rule.textContent = base;
+  headers.textContent = '{"X-TTS-Key":"' + (key.value || '你的访问密钥') + '"}';
+}
+
+function copyConfig() {
+  navigator.clipboard.writeText(rule.textContent);
+  alert('URL 规则已复制');
+}
+
+async function showStatus() {
+  try {
+    let j = await (await api('/status')).json();
+    document.getElementById('cacheInfo').textContent = '当前缓存：' + j.cache.files + ' 个音频，' + (j.cache.bytes / 1048576).toFixed(1) + ' MB';
+    let rows = Object.entries(j.regions),
+        successful = rows.filter(x => x[1].successes > 0),
+        best = successful.sort((a, b) => a[1].avg_latency - b[1].avg_latency)[0],
+        total = rows.reduce((n, x) => n + x[1].successes, 0);
+
+    let summary = '<div class="status-grid">' +
+      '<div class="stat"><small>服务状态</small><b class="ok">● 在线</b></div>' +
+      '<div class="stat"><small>累计成功</small><b>' + total + '</b></div>' +
+      '<div class="stat"><small>缓存音频</small><b>' + j.cache.files + '</b></div>' +
+      '<div class="stat"><small>最快区域</small><b>' + (best ? (regNames[best[0]] || best[0]) : '暂无') + '</b></div>' +
+      '</div>';
+
+    let table = '<div class="table-wrap"><table class="status-table"><thead><tr>' +
+      '<th>区域</th><th>状态</th><th>成功</th><th>失败</th><th>平均延迟</th><th>最近成功</th><th>最近错误</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(([r, x]) => {
+        let state = x.successes > 0 ? 'ok' : x.failures > 0 ? 'bad' : 'idle',
+            label = state === 'ok' ? '正常' : state === 'bad' ? '不可用' : '未测试',
+            when = x.last_success ? new Date(x.last_success * 1000).toLocaleString() : '—';
+        return '<tr><td>' + (regNames[r] || r) + '<br><small>' + r + '</small></td>' +
+               '<td><span class="dot ' + state + '"></span>' + label + '</td>' +
+               '<td>' + x.successes + '</td>' +
+               '<td>' + x.failures + '</td>' +
+               '<td>' + (x.avg_latency ? x.avg_latency.toFixed(3) + ' 秒' : '—') + '</td>' +
+               '<td>' + when + '</td>' +
+               '<td>' + (x.last_error || '—') + '</td></tr>';
+      }).join('') +
+      '</tbody></table></div>';
+
+    document.getElementById('status').innerHTML = summary + table;
+  } catch (e) {
+    document.getElementById('status').innerHTML = '<p class="bad">状态加载失败：' + e.message + '</p>';
+  }
+}
+
+key.oninput = updateConfigText;
+setInterval(function() {
+  if (!document.getElementById("panel").hidden) showStatus();
+}, 10000);
+
+/* ==========================================================================
+   交互辅助与体验优化
+   ========================================================================== */
+function syncThemeUI(theme) {
+  const btnText = document.getElementById('themeBtnText');
+  if (btnText) {
+    btnText.textContent = theme === 'dark' ? '深色模式' : '浅色模式';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const target = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', target);
+  syncThemeUI(target);
+  try { localStorage.setItem('tts_theme', target); } catch (e) {}
+}
+
+// 初始化载入保存的主题偏好
+try {
+  const savedTheme = localStorage.getItem('tts_theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    syncThemeUI(savedTheme);
+  }
+} catch (e) {}
+
+function togglePass(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isPass = input.type === 'password';
+  input.type = isPass ? 'text' : 'password';
+  btn.style.opacity = isPass ? '1' : '0.55';
+}
+
+function reauth() {
+  const sec = document.getElementById('loginSection');
+  if (sec) {
+    sec.classList.toggle('show-forced');
+    sec.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+function setSample(type) {
+  const samples = {
+    '问候': '你好，这是晓晓多语言的试听效果。Hello, welcome to the multilingual voice test.',
+    '小说': '夜幕降临，微风吹拂着静谧的山谷，远处隐约传来古老钟楼清脆悠扬的钟声。',
+    '对话': '“真的吗？这太不可思议了！”她惊喜地睁大了眼睛，抑制不住心中的喜悦。',
+    '英文': 'Azure Neural TTS provides natural and human-like synthetic speech for your reading apps.'
+  };
+  if (samples[type]) {
+    sample.value = samples[type];
+    showToast('已切换至' + type + '预设样本');
+  }
+}
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+  }, 2200);
+}
+</script>
+</body>
+</html>

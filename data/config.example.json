@@ -1,0 +1,15 @@
+{
+  "default_voice": "zh-CN-XiaoxiaoMultilingualNeural",
+  "edge_fallback_voice": "zh-CN-XiaoxiaoNeural",
+  "regions": ["eastus", "westus", "eastasia", "southeastasia", "westeurope", "northeurope"],
+  "default_rate": "+0%",
+  "default_pitch": "+0Hz",
+  "default_volume": "+0%",
+  "default_style": "",
+  "default_role": "",
+  "follow_legado_speed": true,
+  "cache_enabled": true,
+  "cache_ttl_days": 14,
+  "cache_max_mb": 1024,
+  "voices_ttl_hours": 24
+}
