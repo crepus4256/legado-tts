@@ -1,52 +1,132 @@
 # Legado Microsoft TTS Proxy
 
-为 Legado（阅读）提供可直接使用的微软官方在线朗读服务。
+为 Legado（阅读）提供微软官方在线朗读服务，包含 Web 管理页面和 SSH 终端管理面板。
 
 ## 功能
 
-- Microsoft Translator / Azure 官方区域 TTS
-- 默认支持 `zh-CN-XiaoxiaoMultilingualNeural`（晓晓多语言）
-- `eastus`、`westus` 等官方区域故障切换与延迟统计
-- Edge 官方公共接口故障回退
-- Microsoft 临时授权缓存与 401 自动刷新
-- 动态音色目录、风格与角色校验
-- MP3 磁盘缓存
+- Microsoft 官方区域 TTS 与故障切换
+- 默认支持晓晓多语言
+- 动态音色、风格、角色目录
+- Token 缓存、音频缓存和区域统计
 - `X-TTS-Key` 请求头鉴权
 - Legado GET/POST 在线朗读规则兼容
-- 可视化中文管理页面
+- Web 管理页面：音色、语速、缓存、区域和试听
+- SSH 管理命令：状态、启动、停止、重启、日志、更新、卸载
 - Docker Compose 一键安装
-
-> 本项目不使用第三方 TTS 转发服务器。当前 Translator 客户端授权接口并非微软承诺长期兼容的公开服务，微软可能随时调整。正式商业部署建议使用自己的 Azure Speech 订阅。
-
-## 系统要求
-
-- Debian / Ubuntu 等主流 Linux
-- root 或 sudo
-- 公网端口 `8765/tcp`
-- Docker 与 Docker Compose v2（安装脚本可自动安装 Docker）
 
 ## 一键安装
 
-先将 `install.sh` 中的仓库地址替换为你的 GitHub 仓库，或者安装时传入：
+把 `install.sh` 中的 `REPO_URL` 默认值改成你的 GitHub 仓库后，可直接执行：
 
 ```bash
-sudo REPO_URL=https://github.com/crepus4256/legado-tts.git bash -c "$(curl -fsSL https://raw.githubusercontent.com/crepus4256/legado-tts/main/install.sh)"
+curl -fsSL https://raw.githubusercontent.com/crepus4256/legado-tts/main/install.sh | bash
 ```
 
-也可以常规安装：
+如果不想修改脚本默认仓库，也可以临时指定：
 
 ```bash
-git clone https://github.com/crepus4256/legado-tts.git
-cd legado-tts
-sudo REPO_URL=https://github.com/crepus4256/legado-tts.git bash install.sh
+curl -fsSL https://raw.githubusercontent.com/crepus4256/legado-tts/main/install.sh | REPO_URL=https://github.com/crepus4256/legado-tts.git bash
 ```
 
-安装成功后脚本会显示：
+脚本会：
 
-- 管理页面地址
-- 随机访问密钥
-- Legado URL 规则
-- Legado 请求头
+1. 检查并安装 Docker；
+2. 下载项目；
+3. 自动生成访问密钥；
+4. 创建 data 和 cache；
+5. 构建并启动服务；
+6. 安装 `legado-tts` 管理命令；
+7. 输出管理页面、密钥和 Legado 配置。
+
+构建和安装日志：
+
+```text
+/var/log/legado-tts-install.log
+```
+
+SSH 断线后可重新连接查看最后 80 行：
+
+```bash
+tail -n 80 /var/log/legado-tts-install.log
+```
+
+长时间安装建议使用：
+
+```bash
+tmux new -s legado-install
+```
+
+## SSH 管理面板
+
+安装完成后执行：
+
+```bash
+legado-tts
+```
+
+菜单包括：
+
+```text
+1 查询运行状态
+2 启动服务
+3 停止服务
+4 重启服务
+5 查看实时日志
+6 更新并重建
+7 显示连接信息
+8 卸载服务
+0 退出
+```
+
+也可以直接执行：
+
+```bash
+cd /opt/legado-tts
+bash update.sh
+bash uninstall.sh
+bash uninstall.sh --purge --yes
+```
+
+## 卸载说明
+
+普通卸载：
+
+```bash
+bash uninstall.sh
+```
+
+会删除：
+
+- 容器；
+- 项目镜像；
+- `/usr/local/bin/legado-tts`；
+- 项目程序目录。
+
+但会先备份并保留：
+
+- `.env`；
+- `data/`；
+- `cache/`。
+
+备份目录类似：
+
+```text
+/opt/legado-tts-backup-20260915-120000
+```
+
+完全卸载：
+
+```bash
+bash uninstall.sh --purge
+```
+
+需要输入 `DELETE` 二次确认。自动化完全卸载：
+
+```bash
+bash uninstall.sh --purge --yes
+```
+
+完全卸载会删除访问密钥、配置、统计和音频缓存，无法恢复，请谨慎使用。
 
 ## Legado 配置
 
@@ -68,89 +148,36 @@ Content-Type：
 audio/mp3
 ```
 
-推荐并发率：
+推荐并发率：`2`。
 
-```text
-2
-```
+## 安全设计
 
-管理页面：
+启动、停止、重启、更新和卸载只存在于 SSH 管理面板，不放进 Web 管理页面。项目容器不挂载 Docker Socket，避免公网 Web 页面获得宿主机 root 级控制能力。
 
-```text
-http://服务器IP:8765/admin
-```
-
-## 速度模式
-
-- 勾选“跟随阅读 App 的朗读速度”：采用 Legado 的 `speakSpeed`。
-- 取消勾选：忽略 Legado 速度，使用管理页保存的默认语速。
-- 管理页试听永远使用滑块当前值，不受上述开关影响。
-
-微软可能会对极端 SSML 语速进行钳制。例如某些音色的 `+200%` 与 `+300%` 最终音频时长可能完全相同，这是上游限制，不是页面参数未传递。
-
-## 更新
-
-```bash
-cd /opt/legado-tts
-sudo bash update.sh
-```
-
-`.env`、`data` 与 `cache` 会保留。
-
-## 停止服务
-
-```bash
-cd /opt/legado-tts
-sudo bash uninstall.sh
-```
-
-该脚本只停止容器，不删除项目、设置或缓存。
-
-## 目录
-
-```text
-app/                 后端模块与管理页面
-Dockerfile           镜像定义
-compose.yaml         容器编排
-requirements.txt     Python 依赖
-install.sh            一键安装
-update.sh             一键更新
-uninstall.sh          停止服务
-.env.example          环境变量示例
-data/config.example.json 默认配置示例
-```
-
-运行时敏感文件不会提交：
+不要把以下文件提交到 GitHub：
 
 ```text
 .env
 data/access_key
+data/config.json
+data/regions.json
+data/voices.json
+cache/*.mp3
 ```
 
-音频缓存、运行统计、备份和 Python 缓存也不会提交。
+## 项目目录
 
-## 手动启动
-
-```bash
-cp .env.example .env
-# 修改 .env，设置至少 12 位访问密钥
-mkdir -p data cache
-cp data/config.example.json data/config.json
-docker compose up -d --build
+```text
+app/                 Python 后端和 admin.html
+manage.sh            SSH 中文管理面板
+Dockerfile           Docker 镜像
+compose.yaml         Docker Compose
+install.sh           一键安装
+update.sh            一键更新
+uninstall.sh         安全卸载
+.env.example         环境变量示例
+data/config.example.json 默认配置
 ```
-
-健康检查：
-
-```bash
-curl http://127.0.0.1:8765/health
-```
-
-## 安全建议
-
-- 不要提交 `.env` 或 `data/access_key`。
-- 公网部署建议配置 HTTPS。
-- 不要将访问密钥放在 URL 中，优先使用 `X-TTS-Key` 请求头。
-- 不要将管理页面密钥分享给他人。
 
 ## License
 
