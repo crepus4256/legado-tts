@@ -15,13 +15,20 @@ if [ ! -d "$INSTALL_DIR/.git" ]; then git clone "$REPO_URL" "$INSTALL_DIR"; else
 cd "$INSTALL_DIR"
 mkdir -p data cache
 touch cache/.gitkeep
-if [ ! -f .env ]; then
-  KEY=$(openssl rand -hex 24)
-  printf 'TTS_ACCESS_KEY=[REDACTED]' "$KEY" > .env
-  chmod 600 .env
+# data/access_key is authoritative because app/auth.py reads it before .env.
+if [ -s data/access_key ]; then
+  KEY=$(cat data/access_key)
+elif [ -s .env ]; then
+  KEY=$(sed -n 's/^TTS_ACCESS_KEY=//p' .env | head -1)
 else
-  KEY=$(sed -n 's/^TTS_ACCESS_KEY=[REDACTED]' .env | head -1)
+  KEY=$(openssl rand -hex 24)
 fi
+KEY=$(printf '%s' "$KEY" | tr -d '\r\n')
+if [ "${#KEY}" -lt 12 ]; then echo '密钥长度不足 12 位，无法继续安装'; exit 1; fi
+printf '%s' "$KEY" > data/access_key
+chmod 600 data/access_key
+printf 'TTS_ACCESS_KEY=%s\n' "$KEY" > .env
+chmod 600 .env
 if [ ! -f data/config.json ] && [ -f data/config.example.json ]; then cp data/config.example.json data/config.json; fi
 chmod +x manage.sh update.sh uninstall.sh
 echo '开始构建，完整日志会保存到安装日志...'
@@ -29,10 +36,10 @@ docker compose up -d --build
 docker compose ps
 healthy=false
 for _ in $(seq 1 15); do
-  if curl -fsS --max-time 5 "http://127.0.0.1:${PORT}/health" >/dev/null; then healthy=true; break; fi
+  if curl -fsS --max-time 5 "http://127.0.0.1:${PORT}/health" >/dev/null && curl -fsS --max-time 5 -H "X-TTS-Key: $KEY" "http://127.0.0.1:${PORT}/status" >/dev/null; then healthy=true; break; fi
   sleep 2
 done
-$healthy || { echo '服务启动后 30 秒内未通过健康检查'; false; }
+$healthy || { echo '服务启动后 30 秒内未通过健康检查或密钥验证'; false; }
 install -m 755 manage.sh /usr/local/bin/legado-tts
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 echo
