@@ -18,5 +18,17 @@ restart_service(){ log '正在重启服务...'; compose restart; ok '服务已�
 logs(){ compose logs -f --tail=100; }
 update(){ log '正在更新代码并重建镜像，详细日志：/var/log/legado-tts-update.log'; if bash "$INSTALL_DIR/update.sh"; then ok '更新完成'; else fail '更新失败，请查看 /var/log/legado-tts-update.log 最后 80 行'; return 1; fi; }
 show_info(){ echo; echo '========== legado-tts 连接信息 =========='; echo "管理页面：http://$(hostname -I 2>/dev/null | awk '{print $1}') :${PORT}/admin" | sed 's/ :/:/'; echo "项目目录：$INSTALL_DIR"; echo "密钥文件：$INSTALL_DIR/.env 或 $INSTALL_DIR/data/access_key"; echo '注意：为安全起见，不在终端菜单中显示真实密钥。'; }
-uninstall(){ echo; echo '警告：将删除 legado-tts 的容器、镜像、网络、卷、源码、配置、密钥、缓存和管理命令。'; echo '不会删除 Docker、Docker Compose 或其他 Docker 项目。此操作不可恢复。'; read -r -p '如确认，请输入 DELETE：' answer; [ "$answer" = DELETE ] || { echo '已取消'; return; }; bash "$INSTALL_DIR/uninstall.sh" --yes; }
+uninstall(){
+  echo
+  echo '警告：将删除 legado-tts 的容器、镜像、网络、卷、源码、配置、密钥、缓存和管理命令。'
+  echo '不会删除 Docker、Docker Compose 或其他 Docker 项目。此操作不可恢复。'
+  read -r -p '如确认，请输入 DELETE：' answer
+  [ "$answer" = DELETE ] || { echo '已取消'; return; }
+  if bash "$INSTALL_DIR/uninstall.sh" --yes; then
+    exit 0
+  else
+    fail '卸载失败，管理面板仍然保留'
+    return 1
+  fi
+}
 while true; do echo; echo '╔════════════════════════════════════╗'; echo '║       legado-tts SSH 管理面板      ║'; echo '╠════════════════════════════════════╣'; echo '║  1. 查询运行状态                   ║'; echo '║  2. 启动服务                       ║'; echo '║  3. 停止服务                       ║'; echo '║  4. 重启服务                       ║'; echo '║  5. 查看实时日志                   ║'; echo '║  6. 更新并重建                     ║'; echo '║  7. 显示连接信息                   ║'; echo '║  8. 卸载 legado-tts                ║'; echo '║  0. 退出                           ║'; echo '╚════════════════════════════════════╝'; read -r -p '请选择 [0-8]：' choice; case "$choice" in 1) status;; 2) start_service;; 3) stop_service;; 4) restart_service;; 5) logs;; 6) update;; 7) show_info;; 8) uninstall;; 0) exit 0;; *) echo '请输入 0 到 8';; esac; read -r -p '按回车返回菜单...' _; done

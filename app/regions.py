@@ -2,7 +2,7 @@ import json, os, threading, time
 
 PATH='/data/regions.json'
 STALE_SECONDS=86400
-BENCHMARK_TTL_SECONDS=86400
+BENCHMARK_TTL_SECONDS=1800
 lock=threading.Lock()
 
 def _load():

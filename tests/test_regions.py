@@ -62,6 +62,7 @@ class RegionHealthTests(unittest.TestCase):
         self.assertEqual(regions.ordered(['westus','eastus']),['westus','eastus'])
 
     def test_missing_or_expired_benchmark_requires_refresh(self):
+        self.assertEqual(regions.BENCHMARK_TTL_SECONDS,1800)
         with patch('app.regions.time.time',return_value=1000):
             self.assertTrue(regions.needs_benchmark(['eastus']))
             regions.record('eastus',True,0.2,benchmark=True)

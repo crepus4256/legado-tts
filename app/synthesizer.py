@@ -37,7 +37,9 @@ def benchmark_regions(cfg,force=False):
                 elapsed=time.monotonic()-started;regions.record(region,True,elapsed,benchmark=True)
                 return region,True,''
             except HTTPError as exc:
-                if exc.code==401:return region,False,'authentication:401'
+                if exc.code==401:
+                    error='HTTP 401';regions.record(region,False,time.monotonic()-started,error,benchmark=True)
+                    return region,False,'authentication:401'
                 error='HTTP '+str(exc.code);regions.record(region,False,time.monotonic()-started,error,benchmark=True)
                 return region,False,error
             except Exception as exc:
@@ -62,6 +64,7 @@ def azure(text,voice,rate,pitch,volume,style,role,cfg):
                 regions.record(region,True,time.monotonic()-started); return data,region
             except HTTPError as e:
                 if e.code==401:
+                    regions.record(region,False,time.monotonic()-started,'HTTP 401')
                     token_manager.invalidate();errors.append('authentication:401');break
                 regions.record(region,False,time.monotonic()-started,'HTTP '+str(e.code));errors.append(region+':'+str(e.code))
             except Exception as e:
