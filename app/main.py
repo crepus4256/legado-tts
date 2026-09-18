@@ -53,7 +53,8 @@ def list_voices(request:Request,locale:str='',q:str=''):
     auth.require(request);cfg=config_store.load();return {'voices':voices.public(locale,q,cfg['voices_ttl_hours'])}
 @app.get('/status')
 def status(request:Request):
-    auth.require(request);return {'config':config_store.load(),'regions':regions.stats(),'cache':audio_cache.status()}
+    auth.require(request);cfg=config_store.load()
+    return {'config':cfg,'regions':regions.status(cfg['regions']),'cache':audio_cache.status()}
 @app.post('/admin/config')
 async def admin_config(request:Request):
     auth.require(request);body=await request.json()

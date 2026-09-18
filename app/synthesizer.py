@@ -25,14 +25,17 @@ def azure(text,voice,rate,pitch,volume,style,role,cfg):
                 if len(data)<1000:raise RuntimeError('empty audio')
                 regions.record(region,True,time.monotonic()-started); return data,region
             except HTTPError as e:
-                regions.record(region,False,time.monotonic()-started,'HTTP '+str(e.code)); errors.append(region+':'+str(e.code))
-                if e.code==401:token_manager.invalidate()
+                if e.code==401:
+                    token_manager.invalidate();errors.append('authentication:401');break
+                regions.record(region,False,time.monotonic()-started,'HTTP '+str(e.code));errors.append(region+':'+str(e.code))
             except Exception as e:
                 regions.record(region,False,time.monotonic()-started,type(e).__name__); errors.append(region+':'+type(e).__name__)
     raise RuntimeError(','.join(errors))
 async def edge(text,rate,pitch,volume,voice):
     fd,path=tempfile.mkstemp(suffix='.mp3');os.close(fd)
-    try:await edge_tts.Communicate(text,voice,rate=rate,pitch=pitch,volume=volume).save(path);return open(path,'rb').read()
+    try:
+        await edge_tts.Communicate(text,voice,rate=rate,pitch=pitch,volume=volume).save(path)
+        with open(path,'rb') as stream:return stream.read()
     finally:
         if os.path.exists(path):os.unlink(path)
 async def synthesize(text,params,cfg):

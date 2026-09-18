@@ -1,22 +1,70 @@
 import json, os, threading, time
-PATH='/data/regions.json'; lock=threading.Lock()
+
+PATH='/data/regions.json'
+STALE_SECONDS=86400
+lock=threading.Lock()
+
 def _load():
-    try: return json.load(open(PATH))
-    except Exception: return {}
+    try:
+        with open(PATH,encoding='utf-8') as stream:data=json.load(stream)
+        return data if isinstance(data,dict) else {}
+    except Exception:return {}
+
+def _normalise(value):
+    value=value if isinstance(value,dict) else {}
+    last_error=str(value.get('last_error','') or '')[:160]
+    if 'last_failure' not in value and value.get('last_success') and not value.get('consecutive_failures'):
+        last_error=''
+    return {
+        'successes':max(0,int(value.get('successes',0) or 0)),
+        'failures':max(0,int(value.get('failures',0) or 0)),
+        'consecutive_failures':max(0,int(value.get('consecutive_failures',0) or 0)),
+        'avg_latency':max(0,float(value.get('avg_latency',0) or 0)),
+        'last_latency':max(0,float(value.get('last_latency',0) or 0)),
+        'last_attempt':max(0,float(value.get('last_attempt',0) or 0)),
+        'last_success':max(0,float(value.get('last_success',0) or 0)),
+        'last_failure':max(0,float(value.get('last_failure',0) or 0)),
+        'last_error':last_error,
+    }
+
+def _state(stats,now):
+    if not stats['last_attempt'] and not stats['successes'] and not stats['failures']:return 'untested'
+    if stats['consecutive_failures']>=3:return 'unavailable'
+    if stats['consecutive_failures']>0:return 'degraded'
+    if not stats['last_success']:return 'unavailable'
+    if now-stats['last_success']>STALE_SECONDS:return 'stale'
+    return 'healthy'
+
 def ordered(configured):
-    stats=_load(); now=time.time()
-    def score(r):
-        s=stats.get(r,{})
-        penalty=min(s.get('failures',0),10)*2 + (20 if now-s.get('last_success',0)>86400 else 0)
-        return s.get('avg_latency',9)+penalty
-    known=[r for r in configured if stats.get(r,{}).get('successes',0)>0]
-    unknown=[r for r in configured if r not in known]
-    return sorted(known,key=score)+unknown
+    data=_load();now=time.time();positions={region:index for index,region in enumerate(configured)}
+    def score(region):
+        stats=_normalise(data.get(region));state=_state(stats,now)
+        penalty={'healthy':0,'degraded':20,'stale':40,'unavailable':80,'untested':10}[state]
+        return penalty+(stats['avg_latency'] or 9),positions[region]
+    return sorted(configured,key=score)
+
 def record(region,ok,elapsed,error=''):
     with lock:
-        data=_load(); s=data.setdefault(region,{'successes':0,'failures':0,'avg_latency':0,'last_success':0,'last_error':''})
+        data=_load();stats=_normalise(data.get(region));now=time.time()
+        stats['last_attempt']=now;stats['last_latency']=round(max(0,elapsed),4)
         if ok:
-            n=s['successes']; s['successes']=n+1; s['avg_latency']=round((s['avg_latency']*n+elapsed)/(n+1),4); s['last_success']=time.time(); s['failures']=max(0,s['failures']-1)
-        else: s['failures']+=1; s['last_error']=str(error)[:160]
-        os.makedirs('/data',exist_ok=True); tmp=PATH+'.tmp'; json.dump(data,open(tmp,'w'),indent=2); os.replace(tmp,PATH)
-def stats(): return _load()
+            count=stats['successes'];stats['successes']=count+1
+            stats['avg_latency']=round((stats['avg_latency']*count+elapsed)/(count+1),4)
+            stats['last_success']=now;stats['consecutive_failures']=0
+            stats['last_failure']=0;stats['last_error']=''
+        else:
+            stats['failures']+=1;stats['consecutive_failures']+=1
+            stats['last_failure']=now;stats['last_error']=str(error)[:160]
+        data[region]=stats
+        os.makedirs(os.path.dirname(PATH),exist_ok=True);tmp=PATH+'.tmp'
+        with open(tmp,'w',encoding='utf-8') as stream:json.dump(data,stream,indent=2)
+        os.replace(tmp,PATH)
+
+def status(configured):
+    data=_load();now=time.time();enabled_set=set(configured)
+    def item(region):
+        stats=_normalise(data.get(region));return {'id':region,'state':_state(stats,now),**stats}
+    return {
+        'enabled':[item(region) for region in configured],
+        'disabled':[item(region) for region in sorted(data) if region not in enabled_set],
+    }

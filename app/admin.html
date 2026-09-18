@@ -1155,6 +1155,11 @@
       background: var(--text-dim);
     }
 
+    .dot.degraded, .dot.stale {
+      background: var(--warning-color);
+      box-shadow: 0 0 8px var(--warning-color);
+    }
+
     /* 浮动 Toast 弹窗 */
     .toast {
       position: fixed;
@@ -1383,7 +1388,7 @@
               <div class="card-icon-badge">📊</div>
               <div>
                 <h2>运行状态与多区域健康监控</h2>
-                <p class="card-subtitle">系统每 10 秒自动轮询检测各节点连通性与平均响应延迟</p>
+                <p class="card-subtitle">基于真实语音合成请求统计区域健康状态，每 10 秒刷新显示</p>
               </div>
             </div>
           </div>
@@ -1607,11 +1612,11 @@ function renderAll() {
       `<div class="region-right">` +
         `<span class="region-prio-text">优先级</span>` +
         `<div class="prio-stepper" onclick="event.preventDefault(); event.stopPropagation();">` +
-          `<button type="button" class="prio-btn prio-btn-dec" onclick="stepPrio('${id}', -1); event.stopPropagation();" title="降低优先级">` +
+          `<button type="button" class="prio-btn prio-btn-dec" onclick="stepPrio('${id}', -1); event.stopPropagation();" title="提高优先级">` +
             `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>` +
           `</button>` +
           `<input class="prio" data-r="${id}" type="number" min="1" max="6" value="${Math.max(1, cfg.regions.indexOf(id) + 1)}" onclick="event.stopPropagation()">` +
-          `<button type="button" class="prio-btn prio-btn-inc" onclick="stepPrio('${id}', 1); event.stopPropagation();" title="提高优先级">` +
+          `<button type="button" class="prio-btn prio-btn-inc" onclick="stepPrio('${id}', 1); event.stopPropagation();" title="降低优先级">` +
             `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>` +
           `</button>` +
         `</div>` +
@@ -1664,16 +1669,21 @@ function speedModeChanged() {
 }
 
 function stepPrio(id, delta) {
-  let el = document.querySelector(`[data-r="${id}"]`);
-  if (!el) return;
-  let val = parseInt(el.value) || 1;
-  val = Math.max(1, Math.min(6, val + delta));
-  el.value = val;
+  const enabled = [...document.querySelectorAll('.reg:checked')].map(x => x.value);
+  const ordered = enabled.sort((a, b) =>
+    Number(document.querySelector(`[data-r="${a}"]`).value) - Number(document.querySelector(`[data-r="${b}"]`).value)
+  );
+  const index = ordered.indexOf(id), next = index + delta;
+  if (index < 0 || next < 0 || next >= ordered.length) return;
+  [ordered[index], ordered[next]] = [ordered[next], ordered[index]];
+  ordered.forEach((region, position) => {
+    document.querySelector(`[data-r="${region}"]`).value = position + 1;
+  });
 }
 
 function regionsValue() {
-  return [...document.querySelectorAll('.reg:checked')].map(x => x.value).sort(
-    (a, b) => document.querySelector(`[data-r="${a}"]`).value - document.querySelector(`[data-r="${b}"]`).value
+  return [...document.querySelectorAll('.reg:checked')].map(x => x.value).sort((a, b) =>
+    Number(document.querySelector(`[data-r="${a}"]`).value) - Number(document.querySelector(`[data-r="${b}"]`).value)
   );
 }
 
@@ -1769,24 +1779,27 @@ async function showStatus() {
   try {
     let j = await (await api('/status')).json();
     document.getElementById('cacheInfo').textContent = '当前缓存：' + j.cache.files + ' 个音频，' + (j.cache.bytes / 1048576).toFixed(1) + ' MB';
-    let rows = Object.entries(j.regions),
-        successful = rows.filter(x => x[1].successes > 0),
-        best = successful.sort((a, b) => a[1].avg_latency - b[1].avg_latency)[0],
-        total = rows.reduce((n, x) => n + x[1].successes, 0);
+    let rows = j.regions.enabled,
+        healthy = rows.filter(x => x.state === 'healthy'),
+        best = healthy.sort((a, b) => a.avg_latency - b.avg_latency)[0],
+        total = rows.reduce((n, x) => n + x.successes, 0),
+        stateLabels = {healthy:'正常', degraded:'降级', unavailable:'不可用', stale:'数据过期', untested:'未测试'},
+        stateClasses = {healthy:'ok', degraded:'degraded', unavailable:'bad', stale:'stale', untested:'idle'};
 
     let summary = '<div class="status-grid">' +
       '<div class="stat"><small>服务状态</small><b class="ok">● 在线</b></div>' +
       '<div class="stat"><small>累计成功</small><b>' + total + '</b></div>' +
       '<div class="stat"><small>缓存音频</small><b>' + j.cache.files + '</b></div>' +
-      '<div class="stat"><small>最快区域</small><b>' + escapeHtml(best ? (regNames[best[0]] || best[0]) : '暂无') + '</b></div>' +
+      '<div class="stat"><small>最快区域</small><b>' + escapeHtml(best ? (regNames[best.id] || best.id) : '暂无') + '</b></div>' +
       '</div>';
 
     let table = '<div class="table-wrap"><table class="status-table"><thead><tr>' +
       '<th>区域</th><th>状态</th><th>成功</th><th>失败</th><th>平均延迟</th><th>最近成功</th><th>最近错误</th>' +
       '</tr></thead><tbody>' +
-      rows.map(([r, x]) => {
-        let state = x.successes > 0 ? 'ok' : x.failures > 0 ? 'bad' : 'idle',
-            label = state === 'ok' ? '正常' : state === 'bad' ? '不可用' : '未测试',
+      rows.map(x => {
+        let r = x.id,
+            state = stateClasses[x.state] || 'idle',
+            label = stateLabels[x.state] || '未知',
             when = x.last_success ? new Date(x.last_success * 1000).toLocaleString() : '—';
         return '<tr><td>' + escapeHtml(regNames[r] || r) + '<br><small>' + escapeHtml(r) + '</small></td>' +
                '<td><span class="dot ' + state + '"></span>' + label + '</td>' +
