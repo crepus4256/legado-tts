@@ -1480,6 +1480,8 @@
           </div>
           <div class="card-body">
             <div id="regionList" class="regions"></div>
+            <button id="benchmarkBtn" class="secondary" onclick="benchmarkRegions()" style="margin-top:14px; width:100%;">测速全部启用区域</button>
+            <p id="benchmarkInfo" class="hint"></p>
           </div>
         </div>
 
@@ -1750,6 +1752,28 @@ async function clearCache() {
   }
 }
 
+async function benchmarkRegions() {
+  if (JSON.stringify(regionsValue()) !== JSON.stringify(cfg.regions)) {
+    alert('区域设置尚未保存，请先保存全部设置再测速');
+    return;
+  }
+  benchmarkBtn.disabled = true;
+  benchmarkBtn.textContent = '正在并发测速...';
+  benchmarkInfo.textContent = '正在请求全部启用区域，通常需要数秒。';
+  try {
+    await api('/admin/regions/benchmark', { method: 'POST' });
+    benchmarkInfo.textContent = '测速完成，区域顺序已按最新结果自动优化。';
+    showToast('区域测速完成');
+    await showStatus();
+  } catch (e) {
+    benchmarkInfo.textContent = '测速失败：' + e.message;
+    showToast('区域测速失败', 'bad');
+  } finally {
+    benchmarkBtn.disabled = false;
+    benchmarkBtn.textContent = '测速全部启用区域';
+  }
+}
+
 async function changeKey() {
   if (newKey.value.length < 12) return alert('新密钥至少12个字符');
   try {
@@ -1780,8 +1804,8 @@ async function showStatus() {
     let j = await (await api('/status')).json();
     document.getElementById('cacheInfo').textContent = '当前缓存：' + j.cache.files + ' 个音频，' + (j.cache.bytes / 1048576).toFixed(1) + ' MB';
     let rows = j.regions.enabled,
-        healthy = rows.filter(x => x.state === 'healthy'),
-        best = healthy.sort((a, b) => a.avg_latency - b.avg_latency)[0],
+        benchmarked = rows.filter(x => x.state === 'healthy' && x.benchmark_latency > 0),
+        best = benchmarked.sort((a, b) => a.benchmark_latency - b.benchmark_latency)[0],
         total = rows.reduce((n, x) => n + x.successes, 0),
         stateLabels = {healthy:'正常', degraded:'降级', unavailable:'不可用', stale:'数据过期', untested:'未测试'},
         stateClasses = {healthy:'ok', degraded:'degraded', unavailable:'bad', stale:'stale', untested:'idle'};
@@ -1794,18 +1818,21 @@ async function showStatus() {
       '</div>';
 
     let table = '<div class="table-wrap"><table class="status-table"><thead><tr>' +
-      '<th>区域</th><th>状态</th><th>成功</th><th>失败</th><th>平均延迟</th><th>最近成功</th><th>最近错误</th>' +
+      '<th>区域</th><th>状态</th><th>成功</th><th>失败</th><th>平均延迟</th><th>最近测速</th><th>测速时间</th><th>最近成功</th><th>最近错误</th>' +
       '</tr></thead><tbody>' +
       rows.map(x => {
         let r = x.id,
             state = stateClasses[x.state] || 'idle',
             label = stateLabels[x.state] || '未知',
+            benchmarkWhen = x.last_benchmark ? new Date(x.last_benchmark * 1000).toLocaleString() : '—',
             when = x.last_success ? new Date(x.last_success * 1000).toLocaleString() : '—';
         return '<tr><td>' + escapeHtml(regNames[r] || r) + '<br><small>' + escapeHtml(r) + '</small></td>' +
                '<td><span class="dot ' + state + '"></span>' + label + '</td>' +
                '<td>' + x.successes + '</td>' +
                '<td>' + x.failures + '</td>' +
                '<td>' + (x.avg_latency ? x.avg_latency.toFixed(3) + ' 秒' : '—') + '</td>' +
+               '<td>' + (x.benchmark_latency ? x.benchmark_latency.toFixed(3) + ' 秒' : '—') + '</td>' +
+               '<td>' + benchmarkWhen + '</td>' +
                '<td>' + when + '</td>' +
                '<td>' + escapeHtml(x.last_error || '—') + '</td></tr>';
       }).join('') +

@@ -61,5 +61,19 @@ class RegionHealthTests(unittest.TestCase):
     def test_equal_health_preserves_configured_priority(self):
         self.assertEqual(regions.ordered(['westus','eastus']),['westus','eastus'])
 
+    def test_missing_or_expired_benchmark_requires_refresh(self):
+        with patch('app.regions.time.time',return_value=1000):
+            self.assertTrue(regions.needs_benchmark(['eastus']))
+            regions.record('eastus',True,0.2,benchmark=True)
+            self.assertFalse(regions.needs_benchmark(['eastus']))
+        with patch('app.regions.time.time',return_value=1000+regions.BENCHMARK_TTL_SECONDS+1):
+            self.assertTrue(regions.needs_benchmark(['eastus']))
+
+    def test_benchmark_latency_controls_region_order(self):
+        with patch('app.regions.time.time',return_value=1000):
+            regions.record('eastus',True,0.8,benchmark=True)
+            regions.record('westus',True,0.2,benchmark=True)
+            self.assertEqual(regions.ordered(['eastus','westus']),['westus','eastus'])
+
 
 if __name__=='__main__':unittest.main()

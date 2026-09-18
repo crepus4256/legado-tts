@@ -1,4 +1,4 @@
-import json,time,shutil
+import asyncio,json,time,shutil
 from urllib.parse import parse_qs,unquote
 from fastapi import FastAPI,Request,Query,HTTPException
 from fastapi.responses import Response,HTMLResponse,JSONResponse
@@ -63,6 +63,11 @@ async def admin_config(request:Request):
 @app.post('/admin/voices/refresh')
 def refresh_voices(request:Request):
     auth.require(request);voices.refresh(True);return {'ok':True,'count':len(voices.all_voices())}
+@app.post('/admin/regions/benchmark')
+async def benchmark_regions(request:Request):
+    auth.require(request);cfg=config_store.load()
+    try:return {'regions':await asyncio.to_thread(synthesizer.benchmark_regions,cfg,True)}
+    except Exception as exc:raise HTTPException(502,'region benchmark failed: '+str(exc))
 @app.post('/admin/cache/clear')
 def clear_cache(request:Request):
     auth.require(request);shutil.rmtree('/cache',ignore_errors=True);return {'ok':True}

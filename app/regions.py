@@ -2,6 +2,7 @@ import json, os, threading, time
 
 PATH='/data/regions.json'
 STALE_SECONDS=86400
+BENCHMARK_TTL_SECONDS=86400
 lock=threading.Lock()
 
 def _load():
@@ -20,6 +21,8 @@ def _normalise(value):
         'failures':max(0,int(value.get('failures',0) or 0)),
         'consecutive_failures':max(0,int(value.get('consecutive_failures',0) or 0)),
         'avg_latency':max(0,float(value.get('avg_latency',0) or 0)),
+        'benchmark_latency':max(0,float(value.get('benchmark_latency',0) or 0)),
+        'last_benchmark':max(0,float(value.get('last_benchmark',0) or 0)),
         'last_latency':max(0,float(value.get('last_latency',0) or 0)),
         'last_attempt':max(0,float(value.get('last_attempt',0) or 0)),
         'last_success':max(0,float(value.get('last_success',0) or 0)),
@@ -40,13 +43,24 @@ def ordered(configured):
     def score(region):
         stats=_normalise(data.get(region));state=_state(stats,now)
         penalty={'healthy':0,'degraded':20,'stale':40,'unavailable':80,'untested':10}[state]
-        return penalty+(stats['avg_latency'] or 9),positions[region]
+        latency=stats['benchmark_latency'] or stats['avg_latency'] or 9
+        return penalty+latency,positions[region]
     return sorted(configured,key=score)
 
-def record(region,ok,elapsed,error=''):
+def needs_benchmark(configured):
+    data=_load();now=time.time()
+    for region in configured:
+        last_benchmark=_normalise(data.get(region))['last_benchmark']
+        if last_benchmark<=0 or now-last_benchmark>BENCHMARK_TTL_SECONDS:return True
+    return False
+
+def record(region,ok,elapsed,error='',benchmark=False):
     with lock:
         data=_load();stats=_normalise(data.get(region));now=time.time()
         stats['last_attempt']=now;stats['last_latency']=round(max(0,elapsed),4)
+        if benchmark:
+            stats['last_benchmark']=now
+            stats['benchmark_latency']=round(max(0,elapsed),4) if ok else 0
         if ok:
             count=stats['successes'];stats['successes']=count+1
             stats['avg_latency']=round((stats['avg_latency']*count+elapsed)/(count+1),4)

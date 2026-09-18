@@ -19,6 +19,7 @@ class AzureRegionTests(unittest.TestCase):
         cfg={'voices_ttl_hours':24,'regions':['eastus']}
         unauthorized=HTTPError('https://eastus.example',401,'Unauthorized',None,None)
         with patch.object(synthesizer.voices,'find',return_value={'ShortName':'voice'}), \
+             patch.object(synthesizer.regions,'needs_benchmark',return_value=False), \
              patch.object(synthesizer.token_manager,'get',side_effect=['old-token','new-token']) as get_token, \
              patch.object(synthesizer.token_manager,'invalidate') as invalidate, \
              patch.object(synthesizer.regions,'ordered',return_value=['eastus']), \
@@ -35,6 +36,7 @@ class AzureRegionTests(unittest.TestCase):
         cfg={'voices_ttl_hours':24,'regions':['eastus','westus']}
         unauthorized=HTTPError('https://eastus.example',401,'Unauthorized',None,None)
         with patch.object(synthesizer.voices,'find',return_value={'ShortName':'voice'}), \
+             patch.object(synthesizer.regions,'needs_benchmark',return_value=False), \
              patch.object(synthesizer.token_manager,'get',side_effect=['old-token','new-token']), \
              patch.object(synthesizer.token_manager,'invalidate') as invalidate, \
              patch.object(synthesizer.regions,'ordered',return_value=['eastus','westus']), \
@@ -45,6 +47,34 @@ class AzureRegionTests(unittest.TestCase):
         self.assertEqual(urlopen.call_count,2)
         self.assertEqual(invalidate.call_count,2)
         record.assert_not_called()
+
+    def test_benchmark_probes_every_enabled_region(self):
+        cfg={'default_voice':'voice','voices_ttl_hours':24,'regions':['eastus','westus']}
+        snapshot={'enabled':[],'disabled':[]}
+        with patch.object(synthesizer.regions,'needs_benchmark',return_value=True), \
+             patch.object(synthesizer.voices,'find',return_value={'ShortName':'voice'}), \
+             patch.object(synthesizer.token_manager,'get',return_value='token'), \
+             patch.object(synthesizer,'_request',return_value=b'a'*1200) as request, \
+             patch.object(synthesizer.regions,'record') as record, \
+             patch.object(synthesizer.regions,'status',return_value=snapshot):
+            result=synthesizer.benchmark_regions(cfg)
+        self.assertIs(result,snapshot)
+        self.assertEqual(request.call_count,2)
+        self.assertEqual({item.args[0] for item in request.call_args_list},{'eastus','westus'})
+        self.assertEqual(record.call_count,2)
+        self.assertTrue(all(item.kwargs['benchmark'] for item in record.call_args_list))
+
+    def test_first_synthesis_runs_benchmark_before_audio_request(self):
+        cfg={'default_voice':'voice','voices_ttl_hours':24,'regions':['eastus']}
+        with patch.object(synthesizer.voices,'find',return_value={'ShortName':'voice'}), \
+             patch.object(synthesizer.regions,'needs_benchmark',return_value=True), \
+             patch.object(synthesizer,'benchmark_regions') as benchmark, \
+             patch.object(synthesizer.token_manager,'get',return_value='token'), \
+             patch.object(synthesizer.regions,'ordered',return_value=['eastus']), \
+             patch.object(synthesizer.regions,'record'), \
+             patch.object(synthesizer,'_request',return_value=b'a'*1200):
+            synthesizer.azure('text','voice','+0%','+0Hz','+0%','','',cfg)
+        benchmark.assert_called_once_with(cfg)
 
 
 if __name__=='__main__':unittest.main()
