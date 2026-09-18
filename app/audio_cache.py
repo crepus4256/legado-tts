@@ -1,15 +1,22 @@
-import hashlib, json, os, time
+import hashlib, json, os, tempfile, threading, time
 ROOT='/cache'
+_write_lock=threading.Lock()
 def key(params): return hashlib.sha256(json.dumps(params,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 def get(k,ttl_days):
     p=f'{ROOT}/{k}.mp3'
     try:
-        if time.time()-os.path.getmtime(p)<=ttl_days*86400: return open(p,'rb').read()
+        if time.time()-os.path.getmtime(p)<=ttl_days*86400:
+            with open(p,'rb') as stream:return stream.read()
         os.unlink(p)
     except Exception: pass
     return None
 def put(k,data):
-    os.makedirs(ROOT,exist_ok=True); p=f'{ROOT}/{k}.mp3'; tmp=p+'.tmp'; open(tmp,'wb').write(data); os.replace(tmp,p)
+    os.makedirs(ROOT,exist_ok=True); p=f'{ROOT}/{k}.mp3'; fd,tmp=tempfile.mkstemp(prefix=f'.{k}.',suffix='.tmp',dir=ROOT)
+    try:
+        with os.fdopen(fd,'wb') as stream:stream.write(data)
+        with _write_lock:os.replace(tmp,p)
+    finally:
+        if os.path.exists(tmp):os.unlink(tmp)
 def cleanup(ttl_days,max_mb):
     os.makedirs(ROOT,exist_ok=True); now=time.time(); files=[]
     for n in os.listdir(ROOT):

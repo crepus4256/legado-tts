@@ -38,6 +38,8 @@ curl -fsSL https://raw.githubusercontent.com/crepus4256/legado-tts/main/install.
 6. 安装 `legado-tts` 管理命令；
 7. 输出管理页面、密钥和 Legado 配置。
 
+默认监听宿主机 `8765` 端口。如需修改，可在安装时设置，例如 `PORT=9000 bash install.sh`；该端口会写入 `.env`，供后续更新和管理命令继续使用。
+
 构建和安装日志：
 
 ```text
@@ -84,49 +86,31 @@ legado-tts
 cd /opt/legado-tts
 bash update.sh
 bash uninstall.sh
-bash uninstall.sh --purge --yes
+bash uninstall.sh --yes
 ```
 
 ## 卸载说明
 
-普通卸载：
+交互式卸载：
 
 ```bash
 bash uninstall.sh
 ```
 
-会删除：
+输入 `DELETE` 确认后会删除：
 
 - 容器；
 - 项目镜像；
 - `/usr/local/bin/legado-tts`；
-- 项目程序目录。
+- 项目程序目录及其中的 `.env`、`data/`、`cache/`。
 
-但会先备份并保留：
-
-- `.env`；
-- `data/`；
-- `cache/`。
-
-备份目录类似：
-
-```text
-/opt/legado-tts-backup-20260915-120000
-```
-
-完全卸载：
+自动确认卸载：
 
 ```bash
-bash uninstall.sh --purge
+bash uninstall.sh --yes
 ```
 
-需要输入 `DELETE` 二次确认。自动化完全卸载：
-
-```bash
-bash uninstall.sh --purge --yes
-```
-
-完全卸载会删除访问密钥、配置、统计和音频缓存，无法恢复，请谨慎使用。
+卸载会删除访问密钥、配置、统计和音频缓存，不创建备份且无法恢复，请谨慎使用。Docker、Docker Compose 和其他项目不会被删除。
 
 ## Legado 配置
 

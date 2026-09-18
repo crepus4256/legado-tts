@@ -1543,6 +1543,20 @@ function signed(n) {
   return (n >= 0 ? '+' : '') + n;
 }
 
+function makeOption(value, label, selected = false) {
+  const option = document.createElement('option');
+  option.value = String(value ?? '');
+  option.textContent = String(label ?? '');
+  option.selected = selected;
+  return option;
+}
+
+function escapeHtml(value) {
+  const element = document.createElement('span');
+  element.textContent = String(value ?? '');
+  return element.innerHTML;
+}
+
 async function api(url, opt = {}) {
   opt.headers = { ...H(), ...(opt.headers || {}) };
   let r = await fetch(url, opt);
@@ -1572,7 +1586,7 @@ async function login() {
 
 function renderAll() {
   let ls = [...new Set(voices.map(v => v.locale))].sort();
-  locale.innerHTML = ls.map(x => `<option ${x === 'zh-CN' ? 'selected' : ''}>${x}</option>`).join('');
+  locale.replaceChildren(...ls.map(x => makeOption(x, x, x === 'zh-CN')));
   renderVoices(cfg.default_voice);
   followSpeed.checked = cfg.follow_legado_speed !== false;
   rate.value = parseFloat(cfg.default_rate) || 0;
@@ -1609,9 +1623,11 @@ function renderAll() {
 
 function renderVoices(selected) {
   let list = voices.filter(v => v.locale === locale.value);
-  voice.innerHTML = list.map(v =>
-    `<option value="${v.id}" ${v.id === (selected || cfg.default_voice) ? 'selected' : ''}>${v.name} · ${v.gender === 'Female' ? '女声' : '男声'}${v.status && v.status !== 'GA' ? ' · ' + v.status : ''}</option>`
-  ).join('');
+  voice.replaceChildren(...list.map(v => makeOption(
+    v.id,
+    `${v.name} · ${v.gender === 'Female' ? '女声' : '男声'}${v.status && v.status !== 'GA' ? ' · ' + v.status : ''}`,
+    v.id === (selected || cfg.default_voice)
+  )));
   voiceChanged();
 }
 
@@ -1619,9 +1635,10 @@ function voiceChanged() {
   let v = voices.find(x => x.id === voice.value) || {};
   voiceInfo.textContent = v.id || '';
   let ss = v.styles || [];
-  style.innerHTML = '<option value="">自动/无风格</option>' + ss.map(x =>
-    `<option value="${x}" ${x === cfg.default_style ? 'selected' : ''}>${styleName(x)}（${x}）</option>`
-  ).join('');
+  style.replaceChildren(
+    makeOption('', '自动/无风格'),
+    ...ss.map(x => makeOption(x, `${styleName(x)}（${x}）`, x === cfg.default_style))
+  );
   updateConfigText();
 }
 
@@ -1761,7 +1778,7 @@ async function showStatus() {
       '<div class="stat"><small>服务状态</small><b class="ok">● 在线</b></div>' +
       '<div class="stat"><small>累计成功</small><b>' + total + '</b></div>' +
       '<div class="stat"><small>缓存音频</small><b>' + j.cache.files + '</b></div>' +
-      '<div class="stat"><small>最快区域</small><b>' + (best ? (regNames[best[0]] || best[0]) : '暂无') + '</b></div>' +
+      '<div class="stat"><small>最快区域</small><b>' + escapeHtml(best ? (regNames[best[0]] || best[0]) : '暂无') + '</b></div>' +
       '</div>';
 
     let table = '<div class="table-wrap"><table class="status-table"><thead><tr>' +
@@ -1771,19 +1788,19 @@ async function showStatus() {
         let state = x.successes > 0 ? 'ok' : x.failures > 0 ? 'bad' : 'idle',
             label = state === 'ok' ? '正常' : state === 'bad' ? '不可用' : '未测试',
             when = x.last_success ? new Date(x.last_success * 1000).toLocaleString() : '—';
-        return '<tr><td>' + (regNames[r] || r) + '<br><small>' + r + '</small></td>' +
+        return '<tr><td>' + escapeHtml(regNames[r] || r) + '<br><small>' + escapeHtml(r) + '</small></td>' +
                '<td><span class="dot ' + state + '"></span>' + label + '</td>' +
                '<td>' + x.successes + '</td>' +
                '<td>' + x.failures + '</td>' +
                '<td>' + (x.avg_latency ? x.avg_latency.toFixed(3) + ' 秒' : '—') + '</td>' +
                '<td>' + when + '</td>' +
-               '<td>' + (x.last_error || '—') + '</td></tr>';
+               '<td>' + escapeHtml(x.last_error || '—') + '</td></tr>';
       }).join('') +
       '</tbody></table></div>';
 
     document.getElementById('status').innerHTML = summary + table;
   } catch (e) {
-    document.getElementById('status').innerHTML = '<p class="bad">状态加载失败：' + e.message + '</p>';
+    document.getElementById('status').innerHTML = '<p class="bad">状态加载失败：' + escapeHtml(e.message) + '</p>';
   }
 }
 

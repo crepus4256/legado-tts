@@ -56,7 +56,9 @@ def status(request:Request):
     auth.require(request);return {'config':config_store.load(),'regions':regions.stats(),'cache':audio_cache.status()}
 @app.post('/admin/config')
 async def admin_config(request:Request):
-    auth.require(request);body=await request.json();return config_store.save(body)
+    auth.require(request);body=await request.json()
+    try:return config_store.save(body)
+    except ValueError as exc:raise HTTPException(400,str(exc))
 @app.post('/admin/voices/refresh')
 def refresh_voices(request:Request):
     auth.require(request);voices.refresh(True);return {'ok':True,'count':len(voices.all_voices())}

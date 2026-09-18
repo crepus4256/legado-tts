@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 INSTALL_DIR="${INSTALL_DIR:-/opt/legado-tts}"
 REPO_URL="${REPO_URL:-https://github.com/crepus4256/legado-tts.git}"
-PORT="${PORT:-8765}"
+PORT="${PORT:-}"
 LOG="${INSTALL_LOG:-/var/log/legado-tts-install.log}"
 mkdir -p "$(dirname "$LOG")"
 exec > >(tee "$LOG") 2>&1
@@ -13,6 +13,10 @@ if ! command -v docker >/dev/null 2>&1; then echo '未检测到 Docker，开始�
 if ! docker compose version >/dev/null 2>&1; then echo '需要 Docker Compose v2'; exit 1; fi
 if [ ! -d "$INSTALL_DIR/.git" ]; then git clone "$REPO_URL" "$INSTALL_DIR"; else git -C "$INSTALL_DIR" pull --ff-only; fi
 cd "$INSTALL_DIR"
+if [ -z "$PORT" ] && [ -f .env ]; then PORT=$(sed -n 's/^PORT=//p' .env | head -1); fi
+PORT="${PORT:-8765}"
+case "$PORT" in *[!0-9]*|'') echo 'PORT 必须是 1 到 65535 之间的整数'; exit 1;; esac
+if [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then echo 'PORT 必须是 1 到 65535 之间的整数'; exit 1; fi
 mkdir -p data cache
 touch cache/.gitkeep
 # data/access_key is authoritative because app/auth.py reads it before .env.
@@ -27,7 +31,7 @@ KEY=$(printf '%s' "$KEY" | tr -d '\r\n')
 if [ "${#KEY}" -lt 12 ]; then echo '密钥长度不足 12 位，无法继续安装'; exit 1; fi
 printf '%s' "$KEY" > data/access_key
 chmod 600 data/access_key
-printf 'TTS_ACCESS_KEY=%s\n' "$KEY" > .env
+printf 'TTS_ACCESS_KEY=%s\nPORT=%s\n' "$KEY" "$PORT" > .env
 chmod 600 .env
 if [ ! -f data/config.json ] && [ -f data/config.example.json ]; then cp data/config.example.json data/config.json; fi
 chmod +x manage.sh update.sh uninstall.sh
