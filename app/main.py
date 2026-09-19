@@ -1,16 +1,9 @@
 import asyncio,json,time,shutil
-from urllib.parse import parse_qs,unquote
+from urllib.parse import parse_qs
 from fastapi import FastAPI,Request,Query,HTTPException
 from fastapi.responses import Response,HTMLResponse,JSONResponse
-from . import auth,config_store,voices,regions,audio_cache,synthesizer
+from . import auth,config_store,voices,regions,audio_cache,synthesizer,text_codec
 app=FastAPI(title='Legado TTS Manager',docs_url=None,redoc_url=None)
-def decode_text(v):
-    v=v or ''
-    for _ in range(2):
-        d=unquote(v)
-        if d==v:break
-        v=d
-    return v.strip()
 def speed_rate(v):
     try:n=float(v)
     except:return '+0%'
@@ -30,8 +23,8 @@ def params(values,cfg):
     speed=values('speed',values('spd','')) if accept_client_speed else ''
     incoming_rate=values('rate','') if accept_client_speed else ''
     return {'voice':values('voice',cfg['default_voice']),'rate':clean_metric(incoming_rate or (speed_rate(speed) if speed else cfg['default_rate']),cfg['default_rate'],'%'),'pitch':clean_metric(values('pitch',cfg['default_pitch']),cfg['default_pitch'],'Hz'),'volume':clean_metric(values('volume',cfg['default_volume']),cfg['default_volume'],'%'),'style':values('style',cfg.get('default_style','')),'role':values('role',cfg.get('default_role',''))}
-async def serve(request,text,values):
-    auth.require(request); text=decode_text(text)
+async def serve(request,text,values,form_encoded=False):
+    auth.require(request);text=text_codec.decode_text(text,form_encoded)
     if not text:raise HTTPException(400,'empty text')
     if len(text)>5000:raise HTTPException(413,'text too long')
     cfg=config_store.load(); p=params(values,cfg); started=time.monotonic()
@@ -47,7 +40,7 @@ async def get_tts(request:Request,text:str=Query(...)):
 async def post_tts(request:Request):
     body=parse_qs((await request.body()).decode(errors='replace'),keep_blank_values=True);q=request.query_params
     def val(n,d=''):return q.get(n) if q.get(n) is not None else (body.get(n,[d])[0])
-    return await serve(request,val('tex',val('text','')),val)
+    return await serve(request,val('tex',val('text','')),val,True)
 @app.get('/voices')
 def list_voices(request:Request,locale:str='',q:str=''):
     auth.require(request);cfg=config_store.load();return {'voices':voices.public(locale,q,cfg['voices_ttl_hours'])}
